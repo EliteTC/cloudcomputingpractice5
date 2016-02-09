@@ -83,10 +83,15 @@ public class ConferenceApi {
 				
 		// Create a new Profile entity from the
 		// userId, displayName, mainEmail and teeShirtSize
-		Profile profile = new Profile(userId, displayName, mainEmail, teeShirtSize);
-
 		// TODO 3 (In Lesson 3)
 		// Save the Profile entity in the datastore
+		Profile profile = getProfile(user);
+		if (profile == null)
+		profile = new Profile(userId, displayName, mainEmail, teeShirtSize);
+		else
+		profile.update(displayName,teeShirtSize);
+
+		ofy().save().entity(profile).now();
 
 		// Return the profile
 		return profile;
