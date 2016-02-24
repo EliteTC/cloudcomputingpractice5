@@ -14,6 +14,7 @@ import com.google.api.server.spi.response.ConflictException;
 import com.google.api.server.spi.response.ForbiddenException;
 import com.google.api.server.spi.response.UnauthorizedException;
 import com.google.appengine.api.users.User;
+import com.google.devrel.training.conference.Announcement;
 import com.google.devrel.training.conference.Constants;
 import com.google.devrel.training.conference.domain.Conference;
 import com.google.devrel.training.conference.domain.Profile;
@@ -24,7 +25,11 @@ import com.google.devrel.training.conference.form.ProfileForm.TeeShirtSize;
 import com.googlecode.objectify.Key;
 import com.googlecode.objectify.Work;
 import com.googlecode.objectify.cmd.Query;
-
+import com.google.appengine.api.memcache.MemcacheService; 
+import com.google.appengine.api.memcache.MemcacheServiceFactory;
+import com.google.appengine.api.taskqueue.Queue;
+import com.google.appengine.api.taskqueue.QueueFactory;
+import com.google.appengine.api.taskqueue.TaskOptions;
 import javax.inject.Named;
 
 import com.google.api.server.spi.response.NotFoundException;
@@ -198,11 +203,13 @@ public class ConferenceApi {
 		// Create a new Conference Entity, specifying the user's Profile entity
 		// as the parent of the conference
 		Conference conference = new Conference(conferenceId,userId,conferenceForm);
-
+		final Queue queue = QueueFactory.getDefaultQueue();
 		// TODO (Lesson 4)
 		// Save Conference and Profile Entities
 		ofy().save().entities(profile,conference).now();
-
+		queue.add(TaskOptions.Builder.withUrl("/tasks/send_confirmation_email")
+                 .param("email", profile.getMainEmail())
+                 .param("conferenceInfo", conference.toString()));
 		return conference;
 	}
 
@@ -544,5 +551,20 @@ public class ConferenceApi {
 
 
 	}
+	@ApiMethod(
+		    name="getAnnouncement",
+		    path = "announcement",
+		    httpMethod = HttpMethod.GET
+		    )
+		    public Announcement getAnnouncement(){
+		    //TODO GET announcement from memcache by key and if it exist return it
+			MemcacheService memcacheService = MemcacheServiceFactory.getMemcacheService();
+			StringBuilder value =  (StringBuilder) memcacheService.get(Constants.MEMCACHE_ANNOUNCEMENTS_KEY);
+			if(value!=null) return new Announcement(value.toString());
+			
+		    
+		    return null ;
+		    }
+
 
 }
